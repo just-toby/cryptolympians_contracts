@@ -9,6 +9,8 @@ import "@openzeppelin/contracts/utils/Counters.sol";
 contract Cryptolympians is ERC721, Ownable, IERC721Receiver {
     using Counters for Counters.Counter;
 
+    event Bid(address from, uint256 amount);
+
     struct Auction {
         uint256 tokenID;
         address payable winner;
@@ -18,7 +20,7 @@ contract Cryptolympians is ERC721, Ownable, IERC721Receiver {
     }
 
     // Use this for safely minting new NFTs. Starts at 0.
-    Counters.Counter public tokenIds;
+    Counters.Counter public nextTokenId;
     // Use this to track the most recent auction.
     Counters.Counter public auctionCount;
     Auction[] public auctions;
@@ -62,31 +64,39 @@ contract Cryptolympians is ERC721, Ownable, IERC721Receiver {
     }
 
     function withdraw() external onlyOwner() {
-        Auction storage current = auctions[auctionCount.current() - 1];
-        require(block.timestamp > current.endTime);
-        (bool sent, bytes memory data) =
-            owner().call{value: address(this).balance}("");
+        require(
+            auctionCount.current() < 1 ||
+                block.timestamp > auctions[auctionCount.current() - 1].endTime
+        );
+        payable(owner()).transfer(address(this).balance);
     }
 
     function mintNft() external onlyOwner() returns (uint256) {
-        uint256 newNftTokenId = tokenIds.current();
+        uint256 newNftTokenId = nextTokenId.current();
         _safeMint(address(this), newNftTokenId);
 
-        tokenIds.increment();
+        nextTokenId.increment();
 
         return newNftTokenId;
     }
 
+    /**
+     * creates a new auction and returns its ID or index in storage
+     * tokenId - ID of the token to auction (must be minted and owned by the contract)
+     * startTime - unix timestamp after which bids can be accepted
+     * durationHours - number of hours to keep it live
+     */
     function createAuction(
         uint256 tokenId,
-        uint256 startTime, // unix timestamp
+        uint256 startTime,
         uint256 durationHours
-    ) public onlyOwner() {
+    ) public onlyOwner() returns (uint256) {
         require(
             auctionCount.current() == 0 ||
                 auctions[auctionCount.current()].endTime < startTime
         );
         require(_exists(tokenId));
+        require(address(this) == ownerOf(tokenId));
         auctions.push(
             Auction(
                 tokenId,
@@ -97,6 +107,7 @@ contract Cryptolympians is ERC721, Ownable, IERC721Receiver {
             )
         );
         auctionCount.increment();
+        return auctionCount.current() - 1;
     }
 
     function placeBid(uint256 auctionIndex) external payable {
@@ -115,11 +126,12 @@ contract Cryptolympians is ERC721, Ownable, IERC721Receiver {
             "Bid not high enough."
         );
 
-        (bool sent, bytes memory data) =
-            current.winner.call{value: current.winningBid}("");
+        current.winner.transfer(current.winningBid);
         // NOTE: we don't require that this succeed to avoid someone breaking the auction.
         // In case they bid with an address that can reject the funds from being returned
         // and prevent any higher bids from coming in.
+
+        emit Bid(msg.sender, msg.value);
 
         current.winner = payable(msg.sender);
         current.winningBid = msg.value;
@@ -130,10 +142,9 @@ contract Cryptolympians is ERC721, Ownable, IERC721Receiver {
         require(auction.winner == msg.sender);
         require(auction.endTime < block.timestamp);
         if (auction.winningBid < reservePrice) {
-            (bool sent, bytes memory data) =
-                auction.winner.call{value: auction.winningBid}("");
+            auction.winner.transfer(auction.winningBid);
         } else {
-            safeTransferFrom(address(this), msg.sender, auction.tokenID);
+            _safeTransfer(address(this), msg.sender, auction.tokenID, "{}");
         }
     }
 }

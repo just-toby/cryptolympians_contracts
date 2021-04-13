@@ -1,8 +1,8 @@
 import * as chai from 'chai';
 import { Cryptolympians } from '../typechain/Cryptolympians';
 import {SignerWithAddress} from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
-import { Wallet } from 'ethers';
-import { ethers, waffle } from "hardhat";
+import { BigNumber, ContractTransaction, Wallet } from 'ethers';
+import { ethers, waffle, network } from "hardhat";
 
 const { expect } = chai;
 
@@ -11,6 +11,7 @@ describe("Cryptolympians", () => {
     let cryptolympians: Cryptolympians;
     let signers: SignerWithAddress[];
     const provider = waffle.provider;
+    let blockTimestamp = 1623571400;
 
     beforeEach(async () => {
         signers = await ethers.getSigners();
@@ -22,45 +23,430 @@ describe("Cryptolympians", () => {
         expect(cryptolympians.address).to.properAddress;
     });
 
+    afterEach(async () => {
+        blockTimestamp += 8 * 24 * 60 * 60;
+    });
+
     describe("initialization", async () => {
-        // TODO: Test that it is created with correct defaults.
+        it("should default minBid and reservePrice to 0", async () => {
+            const minBid = await cryptolympians.minBid();
+            expect(minBid).to.equal(0);
+
+            const reservePrice = await cryptolympians.reservePrice();
+            expect(reservePrice).to.equal(0);
+
+            const tokenId = await cryptolympians.nextTokenId()
+            expect(tokenId).to.equal(0);
+        });
+
+        it("should have no auctionCount = 0", async () => {
+            const auctionCount = await cryptolympians.auctionCount();
+            expect(auctionCount).to.equal(0);
+        });
+
+        it("should revert on trying to get an invalid auction", async () => {
+            await expect(cryptolympians.auctions(0)).to.be.reverted;
+        });
     });
 
     describe("owner-only functions", async () => {
-        // TODO: Test that the owner-only functions can only be called by the deployer.
-        // TODO: test that the owner can set a new minimum bid amount
-        // TODO: Test that the owner can set a new reserve price.
+        it('should only allow owner to set min bid', async () => {
+            await cryptolympians.connect(signers[0]).setMinBid(100000);
+
+            await expect(cryptolympians.connect(signers[1]).setMinBid(10000)).to.be.reverted;
+        });
+        
+        it('should only allow owner to set reserve price', async () => {
+            await cryptolympians.connect(signers[0]).setReservePrice(100000);
+
+            await expect(cryptolympians.connect(signers[1]).setReservePrice(10000)).to.be.reverted;
+        });      
     });
 
-    describe("mint tokens", async () => {
-        // TODO: Test that minting new NFTs works correctly
-        // TODO: verify only the owner can mint new NFTs
-        // TODO: verify the metadata URL is correct
-        // TODO: verify the new NFT's id is correct
-    });
+    describe("minting + ERC721 behavior", async () => {
+        it('should succeed minting and increment the ID counter', async () => {
+            let nextTokenId;
+            nextTokenId = await cryptolympians.nextTokenId();
+            expect(nextTokenId).to.equal(0);
 
-    describe("payable and withdrawable", async () => {
-        // TODO: Test that you can send ETH to the contract
-        // TODO: test that only the owner can withdraw all the ETH from the contract
-        // TODO: Test that the owner can't withdraw while an auction is live
+            // TODO: use the return value of this funtion to check the result
+            await cryptolympians.mintNft();
+            nextTokenId = await cryptolympians.nextTokenId();
+            expect(nextTokenId.toNumber() - 1).to.equal(0);
+
+            nextTokenId = await cryptolympians.nextTokenId();
+            expect(nextTokenId).to.equal(1);
+        });
+
+        it('should give newly minted tokens to the contract', async () => {
+            // TODO: use the return value of this funtion to check the result
+            await cryptolympians.mintNft();
+            const nextTokenId = await cryptolympians.nextTokenId();
+
+            const newTokenOwner = await cryptolympians.ownerOf(nextTokenId.toNumber() - 1);
+            expect(newTokenOwner).to.be.equal(cryptolympians.address);
+        });
+
+        it('should only allow the owner to mint new tokens', async () => {
+            await cryptolympians.connect(signers[0]).mintNft();
+
+            await expect(cryptolympians.connect(signers[1]).mintNft()).to.be.reverted;
+        });
+
+        it('should have the correct metadata for token 0', async () => {
+            // TODO: use the return value of this funtion to check the result
+            await cryptolympians.mintNft();
+            const nextTokenId = await cryptolympians.nextTokenId();
+            const latestTokenMetadata = await cryptolympians.tokenURI(nextTokenId.toNumber() - 1);
+
+            expect(latestTokenMetadata).to.be.equal('https://www.cryptolympians.com/api/token?id=0');
+        });
     });
 
     describe("create a new auction", async () => {
-        // TODO: Test that the owner can create a new auction
-        // TODO: test that non-owners can't create new auctions
-        // TODO: Test that the new auction is correctly saved to storage
-        // TODO: Test that you can't create an auction for a non-existent token.
+        it('allows the owner to create a new auction', async () => {
+            await network.provider.send("evm_setNextBlockTimestamp", [blockTimestamp])
+            await cryptolympians.connect(signers[0]).mintNft();
+                        
+            await cryptolympians.connect(signers[0]).createAuction(
+                    0, 
+                    blockTimestamp + 60 /* start time in unix time (60 seconds after minting) */, 
+                    24 * 7 /* duration in hours */);
+        });
+
+        it('doesn\'t allow non-owners to create new auctions', async () => {
+            await network.provider.send("evm_setNextBlockTimestamp", [blockTimestamp])
+            await cryptolympians.connect(signers[0]).mintNft();
+            
+            await expect(cryptolympians.connect(signers[1]).createAuction(
+                    0, 
+                    blockTimestamp + 60 /* start time in unix time (60 seconds after minting) */, 
+                    24 * 7 /* duration in hours */)).to.be.reverted;
+
+        });
+
+        it('should successfully store the new auction details', async () => {
+            await network.provider.send("evm_setNextBlockTimestamp", [blockTimestamp])
+            await cryptolympians.connect(signers[0]).mintNft();
+            
+            // TODO: use the return value of this funtion to check the result
+            await cryptolympians.connect(signers[0]).createAuction(
+                    0, 
+                    blockTimestamp + 60 /* start time in unix time (60 seconds after minting) */, 
+                    24 * 7 /* duration in hours */);
+            const auctionIndex = (await cryptolympians.auctionCount()).toNumber() - 1;
+
+            const currentAuction = await cryptolympians.auctions(auctionIndex);
+            expect(currentAuction.tokenID).to.equal(0);
+            expect(currentAuction.winner).to.equal(cryptolympians.address);
+            expect(currentAuction.winningBid).to.equal(0);
+            expect(currentAuction.startTime).to.equal(blockTimestamp + 60);
+            expect(currentAuction.endTime).to.equal((blockTimestamp + 60) + 24 * 7 * 60 * 60);
+        });
+        
+        it('should not allow you to create an auction for a non-existent token.', async () => {
+            await network.provider.send("evm_setNextBlockTimestamp", [blockTimestamp])
+
+            await cryptolympians.connect(signers[0]).mintNft();
+            
+            await expect(cryptolympians.connect(signers[0]).createAuction(
+                1, // not minted yet 
+                blockTimestamp + 60 /* start time in unix time (60 seconds after minting) */, 
+                24 * 7 /* duration in hours */)).to.be.reverted;
+        });
+    });
+
+    describe("payable and withdrawable", async () => {
+        it('should only allow owner to withdraw', async () => {
+            await cryptolympians.connect(signers[0]).withdraw();
+
+            await expect(cryptolympians.connect(signers[1]).withdraw()).to.be.reverted;
+        });  
+        
+        it('should not allow owner to withdraw while an auction is live', async () => {
+            await network.provider.send("evm_setNextBlockTimestamp", [blockTimestamp])
+
+            await cryptolympians.connect(signers[0]).mintNft();
+
+            await cryptolympians.connect(signers[0]).createAuction(
+                    0, 
+                    blockTimestamp + 60 /* start time in unix time (60 seconds after minting) */, 
+                    24 * 7 /* duration in hours */);
+
+            await network.provider.send("evm_setNextBlockTimestamp", [blockTimestamp + 60 + 1])
+
+            await expect(cryptolympians.connect(signers[0]).withdraw()).to.be.reverted;
+        });
     });
 
     describe("place a bid", async () => {
-        // TODO: test that anyone can place a bid on a live auction.
-        // TODO: Test that bids fail for auctions that ended or haven't started.
-        // TODO: test that bids fail if not > winningBid + minBid
-        // TODO: test that a successful bid results in refunded funds to the previous winner.
+        it('should allow anyone to place bids on a live auction', async () => {
+            await network.provider.send("evm_setNextBlockTimestamp", [blockTimestamp])
+
+            await cryptolympians.connect(signers[0]).mintNft();
+
+            // TODO: use the return value of this funtion to check the result
+            await cryptolympians.connect(signers[0]).createAuction(
+                0, 
+                blockTimestamp + 60 /* start time in unix time (60 seconds after minting) */, 
+                24 * 7 /* duration in hours */);
+
+            const auctionIndex = (await cryptolympians.auctionCount()).toNumber() - 1;
+
+            await network.provider.send("evm_setNextBlockTimestamp", [blockTimestamp + 60 + 1])
+            await cryptolympians.connect(signers[1]).placeBid(auctionIndex, {
+                value: 1000000
+            });
+            await cryptolympians.connect(signers[0]).placeBid(auctionIndex, {
+                value: 2000000
+            });
+            await cryptolympians.connect(signers[2]).placeBid(auctionIndex, {
+                value: 3000000
+            });
+        });
+
+        it('should should not allow bids on auctions that haven\'t started', async () => {
+            await network.provider.send("evm_setNextBlockTimestamp", [blockTimestamp])
+
+            await cryptolympians.connect(signers[0]).mintNft();
+
+            // TODO: use the return value of this funtion to check the result
+            await cryptolympians.connect(signers[0]).createAuction(
+                0, 
+                blockTimestamp + 60 /* start time in unix time (60 seconds after minting) */, 
+                24 * 7 /* duration in hours */);
+
+            const auctionIndex = (await cryptolympians.auctionCount()).toNumber() - 1;
+
+            await network.provider.send("evm_setNextBlockTimestamp", [blockTimestamp + 59])
+            await expect(cryptolympians.connect(signers[1]).placeBid(auctionIndex, {
+                value: 1000000
+            })).to.be.reverted;
+        });
+
+        it('should should not allow bids on auctions that ended', async () => {
+            await network.provider.send("evm_setNextBlockTimestamp", [blockTimestamp])
+
+            await cryptolympians.connect(signers[0]).mintNft();
+
+            // TODO: use the return value of this funtion to check the result
+            await cryptolympians.connect(signers[0]).createAuction(
+                0, 
+                blockTimestamp + 60 /* start time in unix time (60 seconds after minting) */, 
+                24 * 7 /* duration in hours */);
+
+            const auctionIndex = (await cryptolympians.auctionCount()).toNumber() - 1;
+
+            await network.provider.send("evm_setNextBlockTimestamp", [blockTimestamp + 60 + (24 * 7 * 60 * 60) + 1]);
+            await expect(cryptolympians.connect(signers[1]).placeBid(auctionIndex, {
+                value: 1000000
+            })).to.be.reverted;
+        });
+
+        it('should fail bids that are not higher than the winning bid', async () => {
+            await network.provider.send("evm_setNextBlockTimestamp", [blockTimestamp])
+
+            await cryptolympians.connect(signers[0]).mintNft();
+
+            // TODO: use the return value of this funtion to check the result
+            await cryptolympians.connect(signers[0]).createAuction(
+                0, 
+                blockTimestamp + 60 /* start time in unix time (60 seconds after minting) */, 
+                24 * 7 /* duration in hours */);
+
+            const auctionIndex = (await cryptolympians.auctionCount()).toNumber() - 1;
+
+            await network.provider.send("evm_setNextBlockTimestamp", [blockTimestamp + 60 + 1])
+            await cryptolympians.connect(signers[1]).placeBid(auctionIndex, {
+                value: 1000000
+            });
+            await expect(cryptolympians.connect(signers[0]).placeBid(auctionIndex, {
+                value: 1000000
+            })).to.be.reverted;
+            await cryptolympians.connect(signers[2]).placeBid(auctionIndex, {
+                value: 3000000
+            });
+        });
+
+        it('should refund previous winning bid', async () => {
+            await network.provider.send("evm_setNextBlockTimestamp", [blockTimestamp])
+
+            await cryptolympians.connect(signers[0]).mintNft();
+
+            // TODO: use the return value of this funtion to check the result
+            await cryptolympians.connect(signers[0]).createAuction(
+                0, 
+                blockTimestamp + 60 /* start time in unix time (60 seconds after minting) */, 
+                24 * 7 /* duration in hours */);
+
+            const auctionIndex = (await cryptolympians.auctionCount()).toNumber() - 1;
+
+            await network.provider.send("evm_setNextBlockTimestamp", [blockTimestamp + 60 + 1])
+            await cryptolympians.connect(signers[1]).placeBid(auctionIndex, {
+                value: 1000000
+            });
+            await cryptolympians.connect(signers[2]).placeBid(auctionIndex, {
+                value: 3000000
+            });
+
+            const contractBalanceWei = await ethers.provider.getBalance(cryptolympians.address);
+
+            expect(contractBalanceWei).to.equal(3000000);
+        });
+        
+        
+        it('should emit a Bid event for a new winning bid', async () => {
+            await network.provider.send("evm_setNextBlockTimestamp", [blockTimestamp])
+
+            await cryptolympians.connect(signers[0]).mintNft();
+
+            // TODO: use the return value of this funtion to check the result
+            await cryptolympians.connect(signers[0]).createAuction(
+                0, 
+                blockTimestamp + 60 /* start time in unix time (60 seconds after minting) */, 
+                24 * 7 /* duration in hours */);
+
+            const auctionIndex = (await cryptolympians.auctionCount()).toNumber() - 1;
+
+            await network.provider.send("evm_setNextBlockTimestamp", [blockTimestamp + 60 + 1])
+            await expect(cryptolympians.connect(signers[1]).placeBid(auctionIndex, {
+                value: 1000000
+            })).to.emit(cryptolympians, "Bid").withArgs(signers[1].address, 1000000);
+            await expect(cryptolympians.connect(signers[2]).placeBid(auctionIndex, {
+                value: 3000000
+            })).to.emit(cryptolympians, "Bid").withArgs(signers[2].address, 3000000);
+
+
+        });
     });
 
     describe("claiming NFTs from a completed auction", async () => {
-        // TODO: Test that only the winner can claim
-        // TODO: Test that transfers are successful from the contract to the winner.
+        it('should not allow loser to claim', async () => {
+            await network.provider.send("evm_setNextBlockTimestamp", [blockTimestamp])
+
+            await cryptolympians.connect(signers[0]).mintNft();
+
+            // TODO: use the return value of this funtion to check the result
+            await cryptolympians.connect(signers[0]).createAuction(
+                0, 
+                blockTimestamp + 60 /* start time in unix time (60 seconds after minting) */, 
+                24 * 7 /* duration in hours */);
+
+            const auctionIndex = (await cryptolympians.auctionCount()).toNumber() - 1;
+
+            await network.provider.send("evm_setNextBlockTimestamp", [blockTimestamp + 60 + 1])
+            await cryptolympians.connect(signers[1]).placeBid(auctionIndex, {
+                value: 1000000
+            });
+
+            const auctionEndTimestamp = blockTimestamp + 60 + (24 * 7 * 60 * 60);
+            await network.provider.send(
+                "evm_setNextBlockTimestamp", 
+                [auctionEndTimestamp + 1]
+            );
+
+            await expect(cryptolympians.connect(signers[2]).claim(auctionIndex)).to.be.reverted;
+        });
+
+        it('should allow winner to claim after auction ends', async () => {
+            await network.provider.send("evm_setNextBlockTimestamp", [blockTimestamp])
+            await cryptolympians.connect(signers[0]).mintNft();
+            
+            // TODO: use the return value of this funtion to check the result
+            await cryptolympians.connect(signers[0]).createAuction(
+                0, 
+                blockTimestamp + 60 /* start time in unix time */, 
+                24 * 7 /* duration in hours */);
+
+            const auctionIndex = (await cryptolympians.auctionCount()).toNumber() - 1;
+
+            await network.provider.send("evm_setNextBlockTimestamp", [blockTimestamp + 60 + 1])
+            await cryptolympians.connect(signers[1]).placeBid(auctionIndex, {
+                value: 1000000
+            });
+
+            const auctionEndTimestamp = blockTimestamp + 60 + (24 * 7 * 60 * 60);
+            await network.provider.send(
+                "evm_setNextBlockTimestamp", 
+                [auctionEndTimestamp + 1]
+            );
+
+            await cryptolympians.connect(signers[1]).claim(auctionIndex);
+
+            const newOwner = await cryptolympians.ownerOf(0);
+            expect(newOwner).to.equal(signers[1].address);
+        });
+    });
+
+    describe('e2e flow and post-auction tests', async () => {
+        it('prevent owner from creating an auction for a token that ' +
+           'the contract no longer owns', async () => {
+            await network.provider.send("evm_setNextBlockTimestamp", [blockTimestamp])
+            await cryptolympians.connect(signers[0]).mintNft();
+
+            // TODO: use the return value of this funtion to check the result
+            await cryptolympians.connect(signers[0]).createAuction(
+                0, 
+                blockTimestamp + 60 /* start time in unix time (60 seconds after minting) */, 
+                24 * 7 /* duration in hours */);
+
+            const auctionIndex = (await cryptolympians.auctionCount()).toNumber() - 1;
+
+            await network.provider.send("evm_setNextBlockTimestamp", [blockTimestamp + 60 + 1])
+            await cryptolympians.connect(signers[1]).placeBid(auctionIndex, {
+                value: 1000000
+            });
+
+            const auctionEndTimestamp = blockTimestamp + 60 + (24 * 7 * 60 * 60);
+            await network.provider.send(
+                "evm_setNextBlockTimestamp", 
+                [auctionEndTimestamp + 1]
+            );
+
+            await cryptolympians.connect(signers[1]).claim(auctionIndex);
+            
+            await expect(cryptolympians.connect(signers[0]).createAuction(
+                    0, 
+                    auctionEndTimestamp + 60,
+                    24 * 7 /* duration in hours */)).to.be.reverted;
+
+        });
+
+        it('should allow owner to withdraw ETH after an auction', async () => {
+            await network.provider.send("evm_setNextBlockTimestamp", [blockTimestamp])
+            await cryptolympians.connect(signers[0]).mintNft();
+    
+            // TODO: use the return value of this funtion to check the result
+            await cryptolympians.connect(signers[0]).createAuction(
+                0, 
+                blockTimestamp + 60 /* start time in unix time (60 seconds after minting) */, 
+                24 * 7 /* duration in hours */);
+    
+            const auctionIndex = (await cryptolympians.auctionCount()).toNumber() - 1;
+    
+            await network.provider.send("evm_setNextBlockTimestamp", [blockTimestamp + 60 + 1])
+            await cryptolympians.connect(signers[1]).placeBid(auctionIndex, {
+                value: 1000000
+            });
+    
+            const auctionEndTimestamp = blockTimestamp + 60 + (24 * 7 * 60 * 60);
+            await network.provider.send(
+                "evm_setNextBlockTimestamp", 
+                [auctionEndTimestamp + 1]
+            );
+
+            await cryptolympians.connect(signers[1]).claim(auctionIndex);
+
+            const ownerStartingBalance: BigNumber = await ethers.provider.getBalance(signers[0].address);
+    
+            const withdrawTx = await cryptolympians.connect(signers[0]).withdraw();
+            const withdrawTxReceipt = await withdrawTx.wait();
+            const gasPaid = withdrawTxReceipt.gasUsed.mul(withdrawTx.gasPrice);
+
+
+            const ownerNewBalance: BigNumber = await ethers.provider.getBalance(signers[0].address);
+
+            expect(ownerNewBalance.add(gasPaid).sub(ownerStartingBalance).toNumber()).to.equal(1000000);
+        });
     });
 });

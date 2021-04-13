@@ -33,6 +33,7 @@ interface CryptolympiansInterface extends ethers.utils.Interface {
     "minBid()": FunctionFragment;
     "mintNft()": FunctionFragment;
     "name()": FunctionFragment;
+    "nextTokenId()": FunctionFragment;
     "onERC721Received(address,address,uint256,bytes)": FunctionFragment;
     "owner()": FunctionFragment;
     "ownerOf(uint256)": FunctionFragment;
@@ -45,7 +46,6 @@ interface CryptolympiansInterface extends ethers.utils.Interface {
     "setReservePrice(uint256)": FunctionFragment;
     "supportsInterface(bytes4)": FunctionFragment;
     "symbol()": FunctionFragment;
-    "tokenIds()": FunctionFragment;
     "tokenURI(uint256)": FunctionFragment;
     "transferFrom(address,address,uint256)": FunctionFragment;
     "transferOwnership(address)": FunctionFragment;
@@ -81,6 +81,10 @@ interface CryptolympiansInterface extends ethers.utils.Interface {
   encodeFunctionData(functionFragment: "minBid", values?: undefined): string;
   encodeFunctionData(functionFragment: "mintNft", values?: undefined): string;
   encodeFunctionData(functionFragment: "name", values?: undefined): string;
+  encodeFunctionData(
+    functionFragment: "nextTokenId",
+    values?: undefined
+  ): string;
   encodeFunctionData(
     functionFragment: "onERC721Received",
     values: [string, string, BigNumberish, BytesLike]
@@ -123,7 +127,6 @@ interface CryptolympiansInterface extends ethers.utils.Interface {
     values: [BytesLike]
   ): string;
   encodeFunctionData(functionFragment: "symbol", values?: undefined): string;
-  encodeFunctionData(functionFragment: "tokenIds", values?: undefined): string;
   encodeFunctionData(
     functionFragment: "tokenURI",
     values: [BigNumberish]
@@ -162,6 +165,10 @@ interface CryptolympiansInterface extends ethers.utils.Interface {
   decodeFunctionResult(functionFragment: "mintNft", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "name", data: BytesLike): Result;
   decodeFunctionResult(
+    functionFragment: "nextTokenId",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
     functionFragment: "onERC721Received",
     data: BytesLike
   ): Result;
@@ -194,7 +201,6 @@ interface CryptolympiansInterface extends ethers.utils.Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "symbol", data: BytesLike): Result;
-  decodeFunctionResult(functionFragment: "tokenIds", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "tokenURI", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "transferFrom",
@@ -209,12 +215,14 @@ interface CryptolympiansInterface extends ethers.utils.Interface {
   events: {
     "Approval(address,address,uint256)": EventFragment;
     "ApprovalForAll(address,address,bool)": EventFragment;
+    "Bid(address,uint256)": EventFragment;
     "OwnershipTransferred(address,address)": EventFragment;
     "Transfer(address,address,uint256)": EventFragment;
   };
 
   getEvent(nameOrSignatureOrTopic: "Approval"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "ApprovalForAll"): EventFragment;
+  getEvent(nameOrSignatureOrTopic: "Bid"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "OwnershipTransferred"): EventFragment;
   getEvent(nameOrSignatureOrTopic: "Transfer"): EventFragment;
 }
@@ -378,6 +386,14 @@ export class Cryptolympians extends Contract {
 
     "name()"(overrides?: CallOverrides): Promise<[string]>;
 
+    nextTokenId(
+      overrides?: CallOverrides
+    ): Promise<[BigNumber] & { _value: BigNumber }>;
+
+    "nextTokenId()"(
+      overrides?: CallOverrides
+    ): Promise<[BigNumber] & { _value: BigNumber }>;
+
     onERC721Received(
       arg0: string,
       arg1: string,
@@ -490,14 +506,6 @@ export class Cryptolympians extends Contract {
     symbol(overrides?: CallOverrides): Promise<[string]>;
 
     "symbol()"(overrides?: CallOverrides): Promise<[string]>;
-
-    tokenIds(
-      overrides?: CallOverrides
-    ): Promise<[BigNumber] & { _value: BigNumber }>;
-
-    "tokenIds()"(
-      overrides?: CallOverrides
-    ): Promise<[BigNumber] & { _value: BigNumber }>;
 
     tokenURI(
       tokenId: BigNumberish,
@@ -653,6 +661,10 @@ export class Cryptolympians extends Contract {
 
   "name()"(overrides?: CallOverrides): Promise<string>;
 
+  nextTokenId(overrides?: CallOverrides): Promise<BigNumber>;
+
+  "nextTokenId()"(overrides?: CallOverrides): Promise<BigNumber>;
+
   onERC721Received(
     arg0: string,
     arg1: string,
@@ -763,10 +775,6 @@ export class Cryptolympians extends Contract {
 
   "symbol()"(overrides?: CallOverrides): Promise<string>;
 
-  tokenIds(overrides?: CallOverrides): Promise<BigNumber>;
-
-  "tokenIds()"(overrides?: CallOverrides): Promise<BigNumber>;
-
   tokenURI(tokenId: BigNumberish, overrides?: CallOverrides): Promise<string>;
 
   "tokenURI(uint256)"(
@@ -868,14 +876,14 @@ export class Cryptolympians extends Contract {
       startTime: BigNumberish,
       durationHours: BigNumberish,
       overrides?: CallOverrides
-    ): Promise<void>;
+    ): Promise<BigNumber>;
 
     "createAuction(uint256,uint256,uint256)"(
       tokenId: BigNumberish,
       startTime: BigNumberish,
       durationHours: BigNumberish,
       overrides?: CallOverrides
-    ): Promise<void>;
+    ): Promise<BigNumber>;
 
     getApproved(
       tokenId: BigNumberish,
@@ -910,6 +918,10 @@ export class Cryptolympians extends Contract {
     name(overrides?: CallOverrides): Promise<string>;
 
     "name()"(overrides?: CallOverrides): Promise<string>;
+
+    nextTokenId(overrides?: CallOverrides): Promise<BigNumber>;
+
+    "nextTokenId()"(overrides?: CallOverrides): Promise<BigNumber>;
 
     onERC721Received(
       arg0: string,
@@ -1017,10 +1029,6 @@ export class Cryptolympians extends Contract {
 
     "symbol()"(overrides?: CallOverrides): Promise<string>;
 
-    tokenIds(overrides?: CallOverrides): Promise<BigNumber>;
-
-    "tokenIds()"(overrides?: CallOverrides): Promise<BigNumber>;
-
     tokenURI(tokenId: BigNumberish, overrides?: CallOverrides): Promise<string>;
 
     "tokenURI(uint256)"(
@@ -1074,6 +1082,14 @@ export class Cryptolympians extends Contract {
     ): TypedEventFilter<
       [string, string, boolean],
       { owner: string; operator: string; approved: boolean }
+    >;
+
+    Bid(
+      from: null,
+      amount: null
+    ): TypedEventFilter<
+      [string, BigNumber],
+      { from: string; amount: BigNumber }
     >;
 
     OwnershipTransferred(
@@ -1187,6 +1203,10 @@ export class Cryptolympians extends Contract {
 
     "name()"(overrides?: CallOverrides): Promise<BigNumber>;
 
+    nextTokenId(overrides?: CallOverrides): Promise<BigNumber>;
+
+    "nextTokenId()"(overrides?: CallOverrides): Promise<BigNumber>;
+
     onERC721Received(
       arg0: string,
       arg1: string,
@@ -1299,10 +1319,6 @@ export class Cryptolympians extends Contract {
     symbol(overrides?: CallOverrides): Promise<BigNumber>;
 
     "symbol()"(overrides?: CallOverrides): Promise<BigNumber>;
-
-    tokenIds(overrides?: CallOverrides): Promise<BigNumber>;
-
-    "tokenIds()"(overrides?: CallOverrides): Promise<BigNumber>;
 
     tokenURI(
       tokenId: BigNumberish,
@@ -1446,6 +1462,10 @@ export class Cryptolympians extends Contract {
 
     "name()"(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
+    nextTokenId(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    "nextTokenId()"(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
     onERC721Received(
       arg0: string,
       arg1: string,
@@ -1558,10 +1578,6 @@ export class Cryptolympians extends Contract {
     symbol(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
     "symbol()"(overrides?: CallOverrides): Promise<PopulatedTransaction>;
-
-    tokenIds(overrides?: CallOverrides): Promise<PopulatedTransaction>;
-
-    "tokenIds()"(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
     tokenURI(
       tokenId: BigNumberish,
