@@ -1,9 +1,8 @@
-import chai from 'chai';
+import * as chai from 'chai';
 import { Cryptolympians } from '../typechain/Cryptolympians';
 import {SignerWithAddress} from '@nomiclabs/hardhat-ethers/dist/src/signer-with-address';
 import { Wallet } from 'ethers';
 import { ethers, waffle } from "hardhat";
-
 
 const { expect } = chai;
 

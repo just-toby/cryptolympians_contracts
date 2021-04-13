@@ -117,8 +117,8 @@ contract Cryptolympians is ERC721, Ownable, IERC721Receiver {
 
         (bool sent, bytes memory data) =
             current.winner.call{value: current.winningBid}("");
-        // NOTE: we don't require that this succeed to avoid someone gaming the auction
-        // with 2 addresses they control. In case the first could reject the funds from being returned
+        // NOTE: we don't require that this succeed to avoid someone breaking the auction.
+        // In case they bid with an address that can reject the funds from being returned
         // and prevent any higher bids from coming in.
 
         current.winner = payable(msg.sender);
@@ -129,6 +129,11 @@ contract Cryptolympians is ERC721, Ownable, IERC721Receiver {
         Auction storage auction = auctions[auctionIndex];
         require(auction.winner == msg.sender);
         require(auction.endTime < block.timestamp);
-        safeTransferFrom(address(this), msg.sender, auction.tokenID);
+        if (auction.winningBid < reservePrice) {
+            (bool sent, bytes memory data) =
+                auction.winner.call{value: auction.winningBid}("");
+        } else {
+            safeTransferFrom(address(this), msg.sender, auction.tokenID);
+        }
     }
 }

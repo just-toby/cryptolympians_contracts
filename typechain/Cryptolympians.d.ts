@@ -36,7 +36,7 @@ interface CryptolympiansInterface extends ethers.utils.Interface {
     "onERC721Received(address,address,uint256,bytes)": FunctionFragment;
     "owner()": FunctionFragment;
     "ownerOf(uint256)": FunctionFragment;
-    "placeBid()": FunctionFragment;
+    "placeBid(uint256)": FunctionFragment;
     "renounceOwnership()": FunctionFragment;
     "reservePrice()": FunctionFragment;
     "safeTransferFrom(address,address,uint256)": FunctionFragment;
@@ -90,7 +90,10 @@ interface CryptolympiansInterface extends ethers.utils.Interface {
     functionFragment: "ownerOf",
     values: [BigNumberish]
   ): string;
-  encodeFunctionData(functionFragment: "placeBid", values?: undefined): string;
+  encodeFunctionData(
+    functionFragment: "placeBid",
+    values: [BigNumberish]
+  ): string;
   encodeFunctionData(
     functionFragment: "renounceOwnership",
     values?: undefined
@@ -406,10 +409,12 @@ export class Cryptolympians extends Contract {
     ): Promise<[string]>;
 
     placeBid(
+      auctionIndex: BigNumberish,
       overrides?: PayableOverrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
-    "placeBid()"(
+    "placeBid(uint256)"(
+      auctionIndex: BigNumberish,
       overrides?: PayableOverrides & { from?: string | Promise<string> }
     ): Promise<ContractTransaction>;
 
@@ -676,10 +681,12 @@ export class Cryptolympians extends Contract {
   ): Promise<string>;
 
   placeBid(
+    auctionIndex: BigNumberish,
     overrides?: PayableOverrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
-  "placeBid()"(
+  "placeBid(uint256)"(
+    auctionIndex: BigNumberish,
     overrides?: PayableOverrides & { from?: string | Promise<string> }
   ): Promise<ContractTransaction>;
 
@@ -931,9 +938,15 @@ export class Cryptolympians extends Contract {
       overrides?: CallOverrides
     ): Promise<string>;
 
-    placeBid(overrides?: CallOverrides): Promise<void>;
+    placeBid(
+      auctionIndex: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<void>;
 
-    "placeBid()"(overrides?: CallOverrides): Promise<void>;
+    "placeBid(uint256)"(
+      auctionIndex: BigNumberish,
+      overrides?: CallOverrides
+    ): Promise<void>;
 
     renounceOwnership(overrides?: CallOverrides): Promise<void>;
 
@@ -1205,10 +1218,12 @@ export class Cryptolympians extends Contract {
     ): Promise<BigNumber>;
 
     placeBid(
+      auctionIndex: BigNumberish,
       overrides?: PayableOverrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
-    "placeBid()"(
+    "placeBid(uint256)"(
+      auctionIndex: BigNumberish,
       overrides?: PayableOverrides & { from?: string | Promise<string> }
     ): Promise<BigNumber>;
 
@@ -1462,10 +1477,12 @@ export class Cryptolympians extends Contract {
     ): Promise<PopulatedTransaction>;
 
     placeBid(
+      auctionIndex: BigNumberish,
       overrides?: PayableOverrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
-    "placeBid()"(
+    "placeBid(uint256)"(
+      auctionIndex: BigNumberish,
       overrides?: PayableOverrides & { from?: string | Promise<string> }
     ): Promise<PopulatedTransaction>;
 
