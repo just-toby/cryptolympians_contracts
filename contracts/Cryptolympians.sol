@@ -65,7 +65,7 @@ contract Cryptolympians is ERC721, Ownable, IERC721Receiver {
 
     function withdraw() external onlyOwner() {
         require(
-            auctionCount.current() < 1 ||
+            auctionCount.current() == 0 ||
                 block.timestamp > auctions[auctionCount.current() - 1].endTime
         );
         payable(owner()).transfer(address(this).balance);
@@ -93,7 +93,7 @@ contract Cryptolympians is ERC721, Ownable, IERC721Receiver {
     ) public onlyOwner() returns (uint256) {
         require(
             auctionCount.current() == 0 ||
-                auctions[auctionCount.current()].endTime < startTime
+                auctions[auctionCount.current() - 1].endTime < startTime
         );
         require(_exists(tokenId));
         require(address(this) == ownerOf(tokenId));

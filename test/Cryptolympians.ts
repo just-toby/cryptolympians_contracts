@@ -154,6 +154,32 @@ describe("Cryptolympians", () => {
                 blockTimestamp + 60 /* start time in unix time (60 seconds after minting) */, 
                 24 * 7 /* duration in hours */)).to.be.reverted;
         });
+
+        it('should not allow owner to create an auction that starts while the previous is still running', async () => {
+            await network.provider.send("evm_setNextBlockTimestamp", [blockTimestamp])
+
+            await cryptolympians.connect(signers[0]).mintNft();
+            await cryptolympians.connect(signers[0]).mintNft();
+
+            // start the first auction
+            await cryptolympians.connect(signers[0]).createAuction(
+                0,
+                blockTimestamp + 60 /* start time in unix time (60 seconds after minting) */, 
+                24 * 7 /* duration in hours */);
+
+            await network.provider.send("evm_setNextBlockTimestamp", [blockTimestamp + 60 + 1])
+            // try to start the second auction while the first is live, should fail
+            await expect(cryptolympians.connect(signers[0]).createAuction(
+                1,
+                blockTimestamp + 60 + (24 * 7 * 60 * 60) - 1 /* start time in unix seconds (1 second before the end of the first auction) */, 
+                24 * 7 /* duration in hours */)).to.be.reverted;
+
+                // try to start the second auction after the first ends, should succeed
+            await cryptolympians.connect(signers[0]).createAuction(
+                1,
+                blockTimestamp + 60 + (24 * 7 * 60 * 60) + 1 /* start time in unix seconds (1 second after the end of the first auction) */, 
+                24 * 7 /* duration in hours */);
+        });
     });
 
     describe("payable and withdrawable", async () => {
