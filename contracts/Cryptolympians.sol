@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/utils/Counters.sol";
 contract Cryptolympians is ERC721, Ownable, IERC721Receiver {
     using Counters for Counters.Counter;
 
-    event Bid(address from, uint256 amount);
+    event Bid(address from, uint256 amount, uint256 auctionIndex);
 
     struct Auction {
         uint256 tokenID;
@@ -131,7 +131,7 @@ contract Cryptolympians is ERC721, Ownable, IERC721Receiver {
         // In case they bid with an address that can reject the funds from being returned
         // and prevent any higher bids from coming in.
 
-        emit Bid(msg.sender, msg.value);
+        emit Bid(msg.sender, msg.value, auctionIndex);
 
         current.winner = payable(msg.sender);
         current.winningBid = msg.value;

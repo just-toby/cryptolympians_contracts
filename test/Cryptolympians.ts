@@ -337,10 +337,10 @@ describe("Cryptolympians", () => {
             await network.provider.send("evm_setNextBlockTimestamp", [blockTimestamp + 60 + 1])
             await expect(cryptolympians.connect(signers[1]).placeBid(auctionIndex, {
                 value: 1000000
-            })).to.emit(cryptolympians, "Bid").withArgs(signers[1].address, 1000000);
+            })).to.emit(cryptolympians, "Bid").withArgs(signers[1].address, 1000000, auctionIndex);
             await expect(cryptolympians.connect(signers[2]).placeBid(auctionIndex, {
                 value: 3000000
-            })).to.emit(cryptolympians, "Bid").withArgs(signers[2].address, 3000000);
+            })).to.emit(cryptolympians, "Bid").withArgs(signers[2].address, 3000000, auctionIndex);
 
 
         });
