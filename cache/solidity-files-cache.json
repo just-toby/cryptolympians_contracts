@@ -2,8 +2,8 @@
   "_format": "hh-sol-cache-2",
   "files": {
     "/home/eddiedugan/Documents/apps/cryptolympians_contracts/contracts/Cryptolympians.sol": {
-      "lastModificationDate": 1619198506696,
-      "contentHash": "23c2561d46312d96cabb96e8dd2a5314",
+      "lastModificationDate": 1619199904589,
+      "contentHash": "cf87ff716e0b1cd82db7d699618b38a5",
       "sourceName": "contracts/Cryptolympians.sol",
       "solcConfig": {
         "version": "0.8.0",

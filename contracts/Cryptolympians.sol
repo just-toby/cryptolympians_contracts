@@ -9,7 +9,11 @@ import "@openzeppelin/contracts/utils/Counters.sol";
 contract Cryptolympians is ERC721, Ownable, IERC721Receiver {
     using Counters for Counters.Counter;
 
-    event Bid(address from, uint256 amount, uint256 auctionIndex);
+    event Bid(
+        address indexed from,
+        uint256 amount,
+        uint256 indexed auctionIndex
+    );
 
     struct Auction {
         uint256 tokenID;

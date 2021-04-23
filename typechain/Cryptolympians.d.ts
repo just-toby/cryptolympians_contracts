@@ -1085,9 +1085,9 @@ export class Cryptolympians extends Contract {
     >;
 
     Bid(
-      from: null,
+      from: string | null,
       amount: null,
-      auctionIndex: null
+      auctionIndex: BigNumberish | null
     ): TypedEventFilter<
       [string, BigNumber, BigNumber],
       { from: string; amount: BigNumber; auctionIndex: BigNumber }
